@@ -181,6 +181,7 @@ fm_secondmate_liveness_probe() {  # <meta> <id> <full|poll>
         if state_out=$("$FM_SM_LIVE_LIB_DIR/fm-on.sh" "$id" fm-remote-secondmate-control.sh state "$id" < /dev/null 2>/dev/null); then
           remote_rc=0
           if [ "$(printf '%s\n' "$state_out" | tail -1)" = alive ]; then
+            out=$state_out
             route_reply=$("$FM_SM_LIVE_LIB_DIR/fm-on.sh" "$id" fm-remote-secondmate-control.sh route "$id" < /dev/null 2>/dev/null) || remote_rc=$?
             if [ "$remote_rc" -eq 0 ]; then
               out=$(printf '%s\n%s\n%s\n' "$state_out" '-- fm-remote-secondmate-route --' "$route_reply")

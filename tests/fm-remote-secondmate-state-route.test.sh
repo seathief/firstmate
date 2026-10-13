@@ -96,7 +96,11 @@ case "$cmd" in
     exit 1
     ;;
   state) printf 'alive\n'; exit 0 ;;
-  route) printf 'backend=herdr\n'; exit 0 ;;
+  route)
+    [ "${FM_FAKE_ROUTE_RC:-0}" -eq 0 ] || exit "${FM_FAKE_ROUTE_RC}"
+    printf 'backend=herdr\n'
+    exit 0
+    ;;
 esac
 printf 'ok: remote second-mate readiness confirmed on this host\n'
 exit 0
@@ -108,15 +112,25 @@ SH
     bash -c '
       . "$0/bin/fm-secondmate-liveness-lib.sh"
       fm_secondmate_liveness_probe "$1" rsm1 full
-      printf "%s\n" "$FM_SM_LIVE_STATUS"
+      printf "%s|%s\n" "$FM_SM_LIVE_STATUS" "$FM_SM_LIVE_REASON"
     ' "$ROOT" "$w/home/state/rsm1.meta")
-  [ "$out" = alive ] || fail "an old remote root must still probe alive, got: $out"
+  [ "$out" = 'alive|' ] || fail "an old remote root must still probe alive, got: $out"
   grep -qx 'state-route' "$w/cmd.log" \
     || fail "the probe should try state-route first: $(cat "$w/cmd.log")"
   grep -qx 'state' "$w/cmd.log" \
     || fail "the fallback should use the separate state verb: $(cat "$w/cmd.log")"
   grep -qx 'route' "$w/cmd.log" \
     || fail "the fallback should use the separate route verb: $(cat "$w/cmd.log")"
+
+  out=$(env STATE="$w/home/state" FM_HOME="$w/home" FM_DATA_OVERRIDE="$w/home/data" \
+    FM_SSH_BIN="$w/fakebin/ssh" FM_FAKE_SSH_CMD_LOG="$w/cmd.log" FM_FAKE_ROUTE_RC=1 \
+    bash -c '
+      . "$0/bin/fm-secondmate-liveness-lib.sh"
+      fm_secondmate_liveness_probe "$1" rsm1 full
+      printf "%s|%s\n" "$FM_SM_LIVE_STATUS" "$FM_SM_LIVE_REASON"
+    ' "$ROOT" "$w/home/state/rsm1.meta")
+  [ "$out" = 'skipped|alive remote endpoint route is unreadable on lab-host; inspect and migrate or retire it explicitly' ] \
+    || fail "a route failure in the fallback must keep the alive diagnostic, got: $out"
   pass "full probe: an old remote root falls back to separate state and route"
 }
 
