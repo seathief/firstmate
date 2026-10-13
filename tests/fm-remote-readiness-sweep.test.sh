@@ -75,6 +75,7 @@ probe_full() {
   local w=$1 id=$2
   shift 2
   mkdir -p "$w/cache"
+  # shellcheck disable=SC2016  # The child bash expands "$0" and "$1".
   env STATE="$w/home/state" FM_HOME="$w/home" FM_DATA_OVERRIDE="$w/home/data" \
     FM_REMOTE_READINESS_SWEEP_CACHE="$w/cache" \
     FM_SSH_BIN="$w/fakebin/ssh" FM_FAKE_SSH_LOG="$w/ssh-$id.log" \
@@ -132,6 +133,7 @@ test_sweep_key_uses_sha256sum_when_shasum_absent() {
 - rsm1 - Mate (host: lab-host; root: /remote/root; home: /remote/rsm1-home; scope: remote; projects: alpha; added 2026-01-01)
 EOF
   expected=$(printf '%s|%s\n' lab-host /remote/root | sha256sum | awk '{print $1}')
+  # shellcheck disable=SC2016  # The child bash expands "$0".
   key=$(env -i PATH="$w/bin" FM_HOME="$w/home" FM_DATA_OVERRIDE="$w/home/data" \
     "$BASH" -c '. "$0/bin/fm-remote-readiness-lib.sh"; fm_remote_readiness_sweep_key rsm1' "$ROOT")
   [ "$key" = "$expected" ] \
@@ -149,6 +151,7 @@ test_sweep_key_fails_closed_without_digest_tool() {
 - rsm1 - Mate (host: lab-host; root: /remote/root; home: /remote/rsm1-home; scope: remote; projects: alpha; added 2026-01-01)
 EOF
   rc=0
+  # shellcheck disable=SC2016  # The child bash expands "$0".
   env -i PATH="$w/bin" FM_HOME="$w/home" FM_DATA_OVERRIDE="$w/home/data" \
     "$BASH" -c '. "$0/bin/fm-remote-readiness-lib.sh"; fm_remote_readiness_sweep_key rsm1' "$ROOT" >/dev/null || rc=$?
   [ "$rc" -ne 0 ] || fail "sweep key must fail closed when no digest tool is available"

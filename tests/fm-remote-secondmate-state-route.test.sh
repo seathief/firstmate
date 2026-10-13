@@ -52,6 +52,7 @@ exit 0
 SH
   chmod +x "$fakebin/ssh"
   : > "$w/ssh.log"
+  # shellcheck disable=SC2016  # The child bash expands "$0" and "$1".
   out=$(env STATE="$w/home/state" FM_HOME="$w/home" FM_DATA_OVERRIDE="$w/home/data" \
     FM_SSH_BIN="$w/fakebin/ssh" FM_FAKE_SSH_LOG="$w/ssh.log" \
     bash -c '
@@ -107,6 +108,7 @@ exit 0
 SH
   chmod +x "$fakebin/ssh"
   : > "$w/cmd.log"
+  # shellcheck disable=SC2016  # The child bash expands "$0" and "$1".
   out=$(env STATE="$w/home/state" FM_HOME="$w/home" FM_DATA_OVERRIDE="$w/home/data" \
     FM_SSH_BIN="$w/fakebin/ssh" FM_FAKE_SSH_CMD_LOG="$w/cmd.log" \
     bash -c '
@@ -122,6 +124,7 @@ SH
   grep -qx 'route' "$w/cmd.log" \
     || fail "the fallback should use the separate route verb: $(cat "$w/cmd.log")"
 
+  # shellcheck disable=SC2016  # The child bash expands "$0" and "$1".
   out=$(env STATE="$w/home/state" FM_HOME="$w/home" FM_DATA_OVERRIDE="$w/home/data" \
     FM_SSH_BIN="$w/fakebin/ssh" FM_FAKE_SSH_CMD_LOG="$w/cmd.log" FM_FAKE_ROUTE_RC=1 \
     bash -c '
