@@ -161,7 +161,7 @@ cmd_route() {
 }
 
 cmd_state_route() {
-  local id=$1 state meta
+  local id=$1 state
   validate_id "$id"
   validate_home "$id"
   state=$(state_value "$id")
@@ -169,10 +169,6 @@ cmd_state_route() {
   case "$state" in
     alive)
       printf '%s\n' '-- fm-remote-secondmate-route --'
-      meta=$(meta_path "$id")
-      if [ ! -f "$meta" ] || [ -L "$meta" ]; then
-        die "remote secondmate has no endpoint metadata"
-      fi
       print_route "$id"
       ;;
   esac
