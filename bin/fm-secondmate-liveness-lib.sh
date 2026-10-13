@@ -38,6 +38,8 @@
 #          sequence before probing (once per configured host+root per sweep),
 #          then one read-only state-route remote call that returns the state
 #          word and, when alive, the route block for backend revalidation.
+#          A remote code root predating state-route falls back to separate
+#          state and route calls so an un-updated remote is never misjudged.
 #   poll - watcher tick: remote routes take one read-only state probe per
 #          check; repair still happens, but inside fm-spawn's launch gate only
 #          when a relaunch is actually authorized.
