@@ -121,7 +121,45 @@ test_failed_host_readiness_blocks_all_mates() {
   pass "sweep cache: a failed host readiness blocks every mate on that host"
 }
 
+test_sweep_key_uses_sha256sum_when_shasum_absent() {
+  local w key expected
+  w="$TMP_ROOT/sweep-key-sha256"
+  mkdir -p "$w/bin" "$w/home/data"
+  ln -sf "$(command -v sha256sum)" "$w/bin/sha256sum"
+  ln -sf "$(command -v awk)" "$w/bin/awk"
+  ln -sf "$(command -v dirname)" "$w/bin/dirname"
+  cat > "$w/home/data/secondmates.md" <<'EOF'
+- rsm1 - Mate (host: lab-host; root: /remote/root; home: /remote/rsm1-home; scope: remote; projects: alpha; added 2026-01-01)
+EOF
+  expected=$(printf '%s|%s\n' lab-host /remote/root | sha256sum | awk '{print $1}')
+  key=$(env -i PATH="$w/bin" FM_HOME="$w/home" FM_DATA_OVERRIDE="$w/home/data" \
+    "$BASH" -c '. "$0/bin/fm-remote-readiness-lib.sh"; fm_remote_readiness_sweep_key rsm1' "$ROOT")
+  [ "$key" = "$expected" ] \
+    || fail "sweep key should hash host|root with sha256sum when shasum is absent, got: $key"
+  pass "sweep cache: key falls back to sha256sum when shasum is absent"
+}
+
+test_sweep_key_fails_closed_without_digest_tool() {
+  local w rc
+  w="$TMP_ROOT/sweep-key-nohash"
+  mkdir -p "$w/bin" "$w/home/data"
+  ln -sf "$(command -v awk)" "$w/bin/awk"
+  ln -sf "$(command -v dirname)" "$w/bin/dirname"
+  cat > "$w/home/data/secondmates.md" <<'EOF'
+- rsm1 - Mate (host: lab-host; root: /remote/root; home: /remote/rsm1-home; scope: remote; projects: alpha; added 2026-01-01)
+EOF
+  rc=0
+  env -i PATH="$w/bin" FM_HOME="$w/home" FM_DATA_OVERRIDE="$w/home/data" \
+    "$BASH" -c '. "$0/bin/fm-remote-readiness-lib.sh"; fm_remote_readiness_sweep_key rsm1' "$ROOT" >/dev/null || rc=$?
+  [ "$rc" -ne 0 ] || fail "sweep key must fail closed when no digest tool is available"
+  pass "sweep cache: key fails closed when no digest tool is available"
+}
+
 test_readiness_runs_once_per_host_for_two_mates
 test_failed_host_readiness_blocks_all_mates
+if command -v sha256sum >/dev/null 2>&1; then
+  test_sweep_key_uses_sha256sum_when_shasum_absent
+fi
+test_sweep_key_fails_closed_without_digest_tool
 
 echo "# all fm-remote-readiness-sweep tests passed"

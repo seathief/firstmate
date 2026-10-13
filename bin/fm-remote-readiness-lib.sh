@@ -35,15 +35,24 @@ fm_remote_readiness_require_locks() {
 }
 
 fm_remote_readiness_sweep_key() { # <secondmate-id>
-  local id=$1 reg data
+  local id=$1 reg data digest
   # shellcheck source=bin/fm-secondmate-registry-lib.sh
   . "$FM_REMOTE_READINESS_LIB_DIR/fm-secondmate-registry-lib.sh"
   data="${FM_DATA_OVERRIDE:-${FM_HOME:?}/data}"
   reg="$data/secondmates.md"
   secondmate_registry_line_for_id "$reg" "$id" || return 1
   [ "$SECONDMATE_REGISTRY_REMOTE" -eq 1 ] || return 1
-  printf '%s|%s\n' "$SECONDMATE_REGISTRY_HOST" "$SECONDMATE_REGISTRY_ROOT" \
-    | shasum -a 256 2>/dev/null | awk '{print $1}'
+  if command -v shasum >/dev/null 2>&1; then
+    digest=$(printf '%s|%s\n' "$SECONDMATE_REGISTRY_HOST" "$SECONDMATE_REGISTRY_ROOT" | shasum -a 256 | awk '{print $1}') || return 1
+  elif command -v sha256sum >/dev/null 2>&1; then
+    digest=$(printf '%s|%s\n' "$SECONDMATE_REGISTRY_HOST" "$SECONDMATE_REGISTRY_ROOT" | sha256sum | awk '{print $1}') || return 1
+  elif command -v openssl >/dev/null 2>&1; then
+    digest=$(printf '%s|%s\n' "$SECONDMATE_REGISTRY_HOST" "$SECONDMATE_REGISTRY_ROOT" | openssl dgst -sha256 2>/dev/null | awk '{print $NF}') || return 1
+  else
+    return 1
+  fi
+  [ -n "$digest" ] || return 1
+  printf '%s\n' "$digest"
 }
 
 fm_remote_readiness_ensure_uncached() { # <bin-dir> <secondmate-id>
