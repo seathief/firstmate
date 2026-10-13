@@ -146,7 +146,7 @@ fm_secondmate_liveness_probe() {  # <meta> <id> <full|poll>
   local meta=$1 id=$2 mode=$3
   FM_SM_LIVE_STATUS=skipped FM_SM_LIVE_STATE=unknown FM_SM_LIVE_KILL=0
   FM_SM_LIVE_CAUSE='' FM_SM_LIVE_WHERE='' FM_SM_LIVE_REASON='' FM_SM_LIVE_LINE=''
-  local window harness remote_host remote_rc out agent_state readiness_reason route_out remote_backend
+  local window harness remote_host remote_rc out agent_state readiness_reason route_out remote_backend state_out route_reply
   window=$(fm_meta_get "$meta" window)
   [ -n "$window" ] || { FM_SM_LIVE_STATUS=silent; return 0; }
   harness=$(fm_meta_get "$meta" harness)
@@ -173,6 +173,24 @@ fm_secondmate_liveness_probe() {  # <meta> <id> <full|poll>
         remote_rc=0
       else
         remote_rc=$?
+      fi
+      if [ "$remote_rc" -ne 0 ] && [ "$remote_rc" -ne 255 ]; then
+        # A remote code root predating state-route rejects it; probe the
+        # separate verbs so an un-updated remote is never misjudged unreadable.
+        out=
+        if state_out=$("$FM_SM_LIVE_LIB_DIR/fm-on.sh" "$id" fm-remote-secondmate-control.sh state "$id" < /dev/null 2>/dev/null); then
+          remote_rc=0
+          if [ "$(printf '%s\n' "$state_out" | tail -1)" = alive ]; then
+            route_reply=$("$FM_SM_LIVE_LIB_DIR/fm-on.sh" "$id" fm-remote-secondmate-control.sh route "$id" < /dev/null 2>/dev/null) || remote_rc=$?
+            if [ "$remote_rc" -eq 0 ]; then
+              out=$(printf '%s\n%s\n%s\n' "$state_out" '-- fm-remote-secondmate-route --' "$route_reply")
+            fi
+          else
+            out=$state_out
+          fi
+        else
+          remote_rc=$?
+        fi
       fi
     elif out=$("$FM_SM_LIVE_LIB_DIR/fm-on.sh" "$id" fm-remote-secondmate-control.sh state "$id" < /dev/null 2>/dev/null); then
       remote_rc=0
