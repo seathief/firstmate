@@ -618,6 +618,13 @@ test_remote_transport_loss_preserves_expectation() {
   pass "fm-send remote: ssh 255 fails with resend-safe guidance and preserves the expectation"
 }
 
+test_remote_send_default_budget_is_90_seconds() {
+  local line
+  line=$(grep -E 'FM_SEND_REMOTE_BUDGET=\$\{FM_SEND_REMOTE_BUDGET:-' "$SEND" | head -1)
+  assert_contains "$line" ':-90}' "the default FM_SEND_REMOTE_BUDGET should be 90 seconds"
+  pass "fm-send: default remote transport budget is 90 seconds"
+}
+
 test_remote_send_budget_bounds_busy_lane() {
   local dir fb ssh_log home rhome rc err began elapsed count pend delivery corr ssh_before
   dir="$TMP_ROOT/remote-budget"; mkdir -p "$dir"
@@ -797,6 +804,7 @@ test_remote_slash_rides_inbox
 test_remote_real_failure_still_fails
 test_remote_exit3_no_longer_delivered
 test_remote_transport_loss_preserves_expectation
+test_remote_send_default_budget_is_90_seconds
 test_remote_send_budget_bounds_busy_lane
 test_local_pending_reports_delivered_unconfirmed
 test_local_pending_does_not_close_resolve_key

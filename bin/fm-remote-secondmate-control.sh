@@ -5,6 +5,7 @@
 #   fm-remote-secondmate-control.sh launch <id> <harness> <model|-> <effort|-> herdr [traceparent]
 #   fm-remote-secondmate-control.sh relaunch <id> <harness> <model|default|-> <effort|default|->
 #   fm-remote-secondmate-control.sh state <id>
+#   fm-remote-secondmate-control.sh state-route <id>
 #   fm-remote-secondmate-control.sh route <id>
 #   fm-remote-secondmate-control.sh send <id> <message> [fire-and-forget]
 #   fm-remote-secondmate-control.sh key <id> <key>
@@ -157,6 +158,24 @@ cmd_route() {
     die "remote secondmate has no endpoint metadata"
   fi
   print_route "$id"
+}
+
+cmd_state_route() {
+  local id=$1 state meta
+  validate_id "$id"
+  validate_home "$id"
+  state=$(state_value "$id")
+  printf '%s\n' "$state"
+  case "$state" in
+    alive)
+      printf '%s\n' '-- fm-remote-secondmate-route --'
+      meta=$(meta_path "$id")
+      if [ ! -f "$meta" ] || [ -L "$meta" ]; then
+        die "remote secondmate has no endpoint metadata"
+      fi
+      print_route "$id"
+      ;;
+  esac
 }
 
 cmd_launch() {
@@ -438,6 +457,7 @@ case "${1:-}" in
   launch) shift; [ "$#" -ge 5 ] && [ "$#" -le 6 ] || usage; cmd_launch "$@" ;;
   relaunch) shift; [ "$#" -eq 4 ] || usage; cmd_relaunch "$@" ;;
   state) shift; [ "$#" -eq 1 ] || usage; validate_id "$1"; validate_home "$1"; state_value "$1" ;;
+  state-route) shift; [ "$#" -eq 1 ] || usage; cmd_state_route "$1" ;;
   route) shift; [ "$#" -eq 1 ] || usage; cmd_route "$1" ;;
   send) shift; [ "$#" -ge 2 ] && [ "$#" -le 3 ] || usage; cmd_send "$@" ;;
   key) shift; [ "$#" -eq 2 ] || usage; cmd_key "$@" ;;

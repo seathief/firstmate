@@ -695,6 +695,7 @@ report_relaunch() {  # <id> <cause> <where>
 }
 
 secondmate_liveness_sweep() {
+  local sweep_readiness_cache=
   # Idempotent secondmate liveness guarantee at session start; the watcher's
   # secondmate_liveness_tick owns the same guarantee mid-session. The detailed
   # state machine and its only recovery-authorizing states are owned by
@@ -710,6 +711,10 @@ secondmate_liveness_sweep() {
   [ -d "$STATE" ] || return 0
   local meta id remote_host label __fm_timing_stamp parallel=0
   SECONDMATE_RESPAWNED_IDS=""
+  sweep_readiness_cache="$STATE/.secondmate-liveness-readiness-cache"
+  rm -rf "$sweep_readiness_cache"
+  mkdir -p "$sweep_readiness_cache"
+  export FM_REMOTE_READINESS_SWEEP_CACHE="$sweep_readiness_cache"
   if bootstrap_parallel_begin; then
     parallel=1
   fi
@@ -729,6 +734,8 @@ secondmate_liveness_sweep() {
     fi
   done
   [ "$parallel" -eq 0 ] || bootstrap_parallel_finish
+  rm -rf "$sweep_readiness_cache"
+  unset FM_REMOTE_READINESS_SWEEP_CACHE
   return 0
 }
 
