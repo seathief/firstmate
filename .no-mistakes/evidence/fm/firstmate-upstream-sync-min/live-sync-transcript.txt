@@ -1,0 +1,48 @@
+############ SCENARIO 1: content conflict -> do nothing, notify firstmate ############
+sync exit=1  (non-zero expected)
+fork main unchanged: YES
+upstream main unchanged: YES
+notes written for this failure: 1
+  sync> == upstream sync 2026-10-15T06:40:51Z ==
+  sync> base checkout: /private/var/folders/cr/5tj3_889791bf_g0426_c6ph0000gn/T/fm-live.5uGv84/conflict/primary (branch main)
+  sync> conflicted files:
+  sync>   - docs/note.md
+  sync> FAILED: the merge of upstream/main did not finish cleanly; nothing was pushed
+  sync> notified firstmate through /private/var/folders/cr/5tj3_889791bf_g0426_c6ph0000gn/T/fm-live.5uGv84/conflict/primary/bin/fm-inbox.sh
+  sync> removing throwaway worktree /var/folders/cr/5tj3_889791bf_g0426_c6ph0000gn/T//fm-live.5uGv84/conflict/tmp/fm-upstream-sync/wt-86486
+real inbox view (FM_HOME=lab):
+  inbox> 1792046452-ulHCae
+  inbox>     upstream-sync in /private/var/folders/cr/5tj3_889791bf_g0426_c6ph0000gn/T/fm-live.5uGv84/conflict/primary: the merge of upstream/main did not finish cleanly; nothing was pushed (log: /var/folders/cr/5tj3_889791bf_g0426_c6ph0000gn/T//fm-lab.hbuZyY/state/upstream-sync/sync-20261015-144051-86486.log)
+
+############ SCENARIO 2: repeat conflict same day -> notify AGAIN (round-4 fix) ############
+second sync exit=1
+additional notes from second failure: 1
+total note files: 2   wake-queue rows: 2
+notes carrying request_id dedup: 0
+each note body (both distinct failures recorded):
+  note> upstream-sync in /private/var/folders/cr/5tj3_889791bf_g0426_c6ph0000gn/T/fm-live.5uGv84/conflict/primary: the merge of upstream/main did not finish cleanly; nothing was pushed (log: /var/folders/cr/5tj3_889791bf_g0426_c6ph0000gn/T//fm-lab.hbuZyY/state/upstream-sync/sync-20261015-144052-87301.log)
+  note> upstream-sync in /private/var/folders/cr/5tj3_889791bf_g0426_c6ph0000gn/T/fm-live.5uGv84/conflict/primary: the merge of upstream/main did not finish cleanly; nothing was pushed (log: /var/folders/cr/5tj3_889791bf_g0426_c6ph0000gn/T//fm-lab.hbuZyY/state/upstream-sync/sync-20261015-144051-86486.log)
+
+############ SCENARIO 3: clean merge + green tests -> push fork main ############
+sync exit=0
+fork main advanced: YES
+upstream contained in fork main: YES
+merged file present on fork main: upstream change
+repo test entrypoint invoked with args: '--changed'
+new notes for this clean run: 0
+  sync> pushed upstream/main into origin/main
+  sync> OK
+  sync> removing throwaway worktree /var/folders/cr/5tj3_889791bf_g0426_c6ph0000gn/T//fm-live.5uGv84/clean/tmp/fm-upstream-sync/wt-88670
+
+############ SCENARIO 4: origin push URL resolves to upstream -> refuse ############
+sync exit=1  (non-zero expected before any work)
+upstream main unchanged: YES
+  sync> sync.sh: refusing to run: a push to origin would reach upstream
+
+############ SCENARIO 5: failing tests -> no push, notify ############
+sync exit=1  fork main unchanged: YES
+new notes for this failure: 1
+  sync> FAILED: tests failed after merging upstream/main; the merge was not pushed
+
+############ cleanup ############
+done

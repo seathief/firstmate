@@ -1,0 +1,49 @@
+ok - up to date: exit 0
+ok - up to date: reports no change
+ok - up to date: origin unchanged
+ok - up to date: no test run
+ok - up to date: no note
+ok - up to date: no throwaway worktree left behind
+ok - up to date: base checkout registers one worktree
+ok - clean merge: exit 0
+ok - clean merge: origin advanced
+ok - clean merge: upstream is contained after the push
+ok - clean merge: ran the repo test entry point
+ok - clean merge: upstream content landed
+ok - clean merge: fork content kept
+ok - clean merge: no note
+ok - clean merge: no throwaway worktree left behind
+ok - clean merge: base checkout registers one worktree
+ok - conflict: non-zero exit
+ok - conflict: origin unchanged
+ok - conflict: note names the merge
+ok - conflict: no request-id dedup
+ok - conflict retry: non-zero exit
+ok - conflict retry: sends another note
+ok - conflict: no test run
+ok - conflict: no throwaway worktree left behind
+ok - conflict: base checkout registers one worktree
+ok - modify/delete: non-zero exit
+ok - modify/delete: origin unchanged
+ok - modify/delete: note left for firstmate
+ok - modify/delete: no test run
+ok - modify/delete: no throwaway worktree left behind
+ok - modify/delete: base checkout registers one worktree
+ok - failing tests: non-zero exit
+ok - failing tests: origin unchanged
+ok - failing tests: note names the failure
+ok - failing tests: no throwaway worktree left behind
+ok - failing tests: base checkout registers one worktree
+ok - same remote: non-zero exit
+ok - same remote: names the refusal
+ok - same remote: origin unchanged
+ok - same remote: no test run
+ok - equivalent URL refused: https://github.com/kunchenguid//firstmate.git/
+ok - equivalent URL refusal is explicit
+ok - equivalent URL refused: https://github.com/kunchenguid/./firstmate.git
+ok - equivalent URL refusal is explicit
+ok - equivalent URL refused: https://www.github.com/kunchenguid/firstmate.git
+ok - equivalent URL refusal is explicit
+ok - equivalent URL refused: git@github.com:kunchenguid/FirstMate.git
+ok - equivalent URL refusal is explicit
+sync.test.sh: all cases passed

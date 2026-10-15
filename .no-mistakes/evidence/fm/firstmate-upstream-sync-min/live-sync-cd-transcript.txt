@@ -1,0 +1,22 @@
+=== SCENARIO C: clean merge -> push to origin, test entrypoint run, no note ===
+exit=0  origin-advanced=yes
+upstream-contained=yes
+upstream content on origin main: upstream change
+fm-test-run.sh --changed log: (none)
+note files: 0
+pushed upstream/main into origin/main
+OK
+removing throwaway worktree /var/folders/cr/5tj3_889791bf_g0426_c6ph0000gn/T//fm-live.xFIXlz/world2/tmp/fm-upstream-sync/wt-37453
+
+=== SCENARIO D: origin push URL == upstream -> refuse, upstream unchanged ===
+exit=1  origin-unchanged=yes
+sync.sh: refusing to run: a push to origin would reach upstream
+
+=== SCENARIO E: launchd plist schedule (declarative, real consumer=launchd) ===
+/Users/seathief/.no-mistakes/worktrees/91432740dd87/01M4Z0D200RN01JSCPGYGQEJ64/ops/upstream-sync/com.seathief.firstmate-upstream-sync.plist: OK
+StartCalendarInterval: {'Hour': 5, 'Minute': 0}
+RunAtLoad: False
+ProgramArguments: ['/bin/bash', '__REPO__/ops/upstream-sync/sync.sh']
+
+cleanup
+done
