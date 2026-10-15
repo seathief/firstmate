@@ -34,7 +34,7 @@ The script reads no credential, prints none, and never uses sudo.
 ## When a run stops without pushing
 
 The full engine log stays in `$FM_HOME/state/upstream-sync/sync-<timestamp>.log`, and the same failure is left as a note for firstmate, so the captain is told without reading this directory.
-One note per day is recorded: a repeated failure on the same day replays the original capture instead of queueing a second identical note.
+Each failure writes a fresh note so firstmate is notified every time.
 
 ## Running it by hand
 

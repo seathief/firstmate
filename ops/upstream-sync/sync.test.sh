@@ -171,7 +171,14 @@ rc=$?
 if [ "$rc" != 0 ]; then pass "conflict: non-zero exit"; else fail "conflict: exited 0"; fi
 check "conflict: origin unchanged" "$before" "$(origin_head)"
 check_contains "conflict: note names the merge" "did not finish cleanly" "$(cat "$W/inbox.log" 2>/dev/null)"
-check_contains "conflict: note carries a request id" "--request-id" "$(cat "$W/inbox.log" 2>/dev/null)"
+case "$(cat "$W/inbox.log" 2>/dev/null)" in
+  *--request-id*) fail "conflict: request-id dedup remains" ;;
+  *) pass "conflict: no request-id dedup" ;;
+esac
+out="$(run_sync)"
+rc=$?
+if [ "$rc" != 0 ]; then pass "conflict retry: non-zero exit"; else fail "conflict retry: exited 0"; fi
+check "conflict retry: sends another note" 2 "$(wc -l <"$W/inbox.log" | tr -d ' ')"
 check_absent "conflict: no test run" "$W/tests.log"
 check_worktree_cleanup "conflict"
 

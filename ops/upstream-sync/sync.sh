@@ -190,9 +190,7 @@ notify() { # <body>
   # Export FM_HOME only when it is set: an empty value would defeat the inbox
   # script's own fallback and aim the note at /state/inbox.
   if [ -n "${FM_HOME:-}" ]; then export FM_HOME; fi
-  # One note per day: a repeat failure replays the original capture instead of
-  # queueing a second wake for the same cause.
-  if "$script" note --request-id "upstream-sync-$(date +%Y%m%d)" "$body" >>"$LOG" 2>&1; then
+  if "$script" note "$body" >>"$LOG" 2>&1; then
     log "notified firstmate through $script"
   else
     log "could not write the firstmate note; see $LOG"
