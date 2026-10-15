@@ -62,6 +62,7 @@ LOG_DIR="${FM_HOME:-$HOME}/state/upstream-sync"
 STATE_DIR="${TMPDIR:-/tmp}/fm-upstream-sync"
 WORKTREE=""
 LOCK_HELD=""
+ACTIVE_PGID=""
 
 REPO="$(git -C "$SELF" rev-parse --show-toplevel 2>/dev/null)" || die "$SELF is not inside a git checkout"
 [ -d "$REPO" ] || die "no such directory: $REPO"
@@ -70,6 +71,12 @@ REPO="$(cd "$REPO" && pwd -P)"
 export GIT_TERMINAL_PROMPT=0
 
 cleanup() {
+  if [ -n "$ACTIVE_PGID" ]; then
+    kill -TERM -- "-$ACTIVE_PGID" 2>/dev/null || true
+    sleep 1
+    kill -KILL -- "-$ACTIVE_PGID" 2>/dev/null || true
+    ACTIVE_PGID=""
+  fi
   if [ -n "$WORKTREE" ] && [ -d "$WORKTREE" ]; then
     log "removing throwaway worktree $WORKTREE"
     # The worktree is this run's own scratch checkout and the run log already
@@ -83,18 +90,26 @@ trap 'rc=$?; cleanup; exit $rc' EXIT
 
 # Reduce supported SSH and HTTPS remote spellings to host/path, ignoring credentials.
 normalize_url() {
-  python3 -c 'import sys, urllib.parse
+  python3 -c 'import os, sys, urllib.parse
 u = sys.argv[1]
-if "://" not in u:
+if u.startswith("file://"):
+    path = urllib.parse.urlsplit(u).path
+    key = "local/" + os.path.abspath(path)
+elif "://" not in u:
     user, sep, rest = u.partition("@")
     if not sep:
-        print("local/" + u.removesuffix(".git").rstrip("/")); raise SystemExit
-    host, sep, path = rest.partition(":")
-    if not sep: raise SystemExit("unsupported remote URL")
+        key = "local/" + os.path.abspath(u)
+    else:
+        host, sep, path = rest.partition(":")
+        if not sep: raise SystemExit("unsupported remote URL")
+        key = host.lower() + "/" + path
 else:
     parsed = urllib.parse.urlsplit(u)
-    host, path = parsed.hostname or "", parsed.path.lstrip("/")
-print((host.lower() + "/" + path.removesuffix(".git")).rstrip("/"))' "$1"
+    if not parsed.hostname: raise SystemExit("unsupported remote URL")
+    key = parsed.hostname.lower() + "/" + parsed.path.lstrip("/")
+key = key.rstrip("/")
+if key.endswith(".git"): key = key[:-4]
+print(key.lower())' "$1"
 }
 
 # Refuses to run when the remote a push would reach is upstream, before any
@@ -104,9 +119,9 @@ require_origin_is_not_upstream() {
   origin_push="$(git -C "$REPO" remote get-url --push "$ORIGIN" 2>/dev/null)" || die "no such remote: $ORIGIN"
   upstream_fetch="$(git -C "$REPO" remote get-url "$UPSTREAM" 2>/dev/null)" || die "no such remote: $UPSTREAM"
   upstream_push="$(git -C "$REPO" remote get-url --push "$UPSTREAM" 2>/dev/null)" || die "no such remote: $UPSTREAM"
-  origin_push="$(normalize_url "$origin_push")"
-  upstream_fetch="$(normalize_url "$upstream_fetch")"
-  upstream_push="$(normalize_url "$upstream_push")"
+  origin_push="$(normalize_url "$origin_push")" || die "could not normalize $ORIGIN push URL"
+  upstream_fetch="$(normalize_url "$upstream_fetch")" || die "could not normalize $UPSTREAM fetch URL"
+  upstream_push="$(normalize_url "$upstream_push")" || die "could not normalize $UPSTREAM push URL"
   [ "$origin_push" != "$upstream_fetch" ] && [ "$origin_push" != "$upstream_push" ] \
     || die "refusing to run: a push to $ORIGIN would reach $UPSTREAM"
 }
@@ -145,6 +160,7 @@ os.setsid()
 os.chdir(sys.argv[1])
 os.execvp(sys.argv[2], sys.argv[2:])' "$dir" "$@" >>"$LOG" 2>&1 &
   pid=$!
+  ACTIVE_PGID=$pid
   if [ "$secs" -gt 0 ] 2>/dev/null; then
     ( sleep "$secs"; kill -TERM -- "-$pid" 2>/dev/null; sleep 5; kill -KILL -- "-$pid" 2>/dev/null ) >>"$LOG" 2>&1 &
     killer=$!
@@ -155,6 +171,7 @@ os.execvp(sys.argv[2], sys.argv[2:])' "$dir" "$@" >>"$LOG" 2>&1 &
     kill "$killer" 2>/dev/null
     wait "$killer" 2>/dev/null
   fi
+  ACTIVE_PGID=""
   if [ "$rc" -ge 128 ] 2>/dev/null && [ "$secs" -gt 0 ] 2>/dev/null; then
     log "the command exceeded its ${secs}s limit (ended with status $rc)"
   fi
