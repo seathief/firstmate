@@ -1726,6 +1726,15 @@ families_for_changed_path() {
     tests/*)
       printf '%s\n' "__unmapped__:$path"
       ;;
+    ops/upstream-sync/*)
+      # Local operator tooling for a fork's own daily upstream sync; upstream
+      # does not track this path. Its regression is the offline
+      # ops/upstream-sync/sync.test.sh, which deliberately stays outside the
+      # tests/ inventory so this path cannot collide with upstream on the
+      # family map, lane composition, or duration hints. Declaring the mapping
+      # here, rather than leaving it unmapped, is what keeps changed-file
+      # selection from refusing the branch.
+      ;;
     README.md|LICENSE|assets/*|docs/*|.gitignore)
       ;;
     *)

@@ -557,6 +557,10 @@
       "audience": "operator-current"
     },
     {
+      "path": "ops/upstream-sync/README.md",
+      "audience": "operator-current"
+    },
+    {
       "path": "skills/stow/SKILL.md",
       "audience": "public-product"
     },
