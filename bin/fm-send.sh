@@ -136,7 +136,7 @@
 # and makes a later remote enqueue deduplicate onto that same record. An
 # unconfirmed fire-and-forget request exits 3 and names the same delivery id to
 # retry. Every remote transport attempt is bounded by FM_SEND_REMOTE_BUDGET
-# seconds (default 30, and any override must be a positive integer): a bound
+# seconds (default 90, and any override must be a positive integer): a bound
 # hit is completion-unknown and exits through this same unconfirmed contract
 # instead of waiting out a busy remote queue.
 # The remote host runs no re-ring ladder of its own: a swallowed ordinary
@@ -770,7 +770,7 @@ if [ "${1:-}" = "--key" ]; then
   key=$2
   semantic_key=$(fm_send_normalize_key "$key")
   if [ "$TARGET_BACKEND" = remote ]; then
-    FM_SEND_REMOTE_BUDGET=${FM_SEND_REMOTE_BUDGET:-30}
+    FM_SEND_REMOTE_BUDGET=${FM_SEND_REMOTE_BUDGET:-90}
     case "$FM_SEND_REMOTE_BUDGET" in
     '' | *[!0-9]* | 0)
       echo "error: FM_SEND_REMOTE_BUDGET must be a positive integer: $FM_SEND_REMOTE_BUDGET" >&2
@@ -795,7 +795,7 @@ else
     exit 1
   fi
   if [ "$TARGET_BACKEND" = remote ]; then
-    FM_SEND_REMOTE_BUDGET=${FM_SEND_REMOTE_BUDGET:-30}
+    FM_SEND_REMOTE_BUDGET=${FM_SEND_REMOTE_BUDGET:-90}
     case "$FM_SEND_REMOTE_BUDGET" in
     '' | *[!0-9]* | 0)
       echo "error: FM_SEND_REMOTE_BUDGET must be a positive integer: $FM_SEND_REMOTE_BUDGET" >&2
@@ -894,7 +894,7 @@ else
     # reply-bearing request's expectation, while fire-and-forget reports the
     # delivery id that must be reused, because the record may have landed.
     # Every transport attempt is bounded by FM_SEND_REMOTE_BUDGET seconds
-    # (default 30, overridable) so a busy remote queue cannot hold this send
+    # (default 90, overridable) so a busy remote queue cannot hold this send
     # open indefinitely; a bound hit exits through the same
     # unconfirmed-delivery contract.
     REMOTE_META_LOCK=$(fm_meta_lock_path "$TARGET_META") || exit 1

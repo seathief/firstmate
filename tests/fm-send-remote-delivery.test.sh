@@ -618,6 +618,36 @@ test_remote_transport_loss_preserves_expectation() {
   pass "fm-send remote: ssh 255 fails with resend-safe guidance and preserves the expectation"
 }
 
+test_remote_send_default_budget_is_90_seconds() {
+  local dir fb ssh_log home rhome rc err
+  dir="$TMP_ROOT/remote-default-budget"; mkdir -p "$dir"
+  fb=$(make_stubs "$dir"); ssh_log="$dir/ssh.log"; : > "$ssh_log"
+  rhome=$(setup_remote_secondmate_home remote-default-budget)
+  home=$(setup_remote_parent_home remote-default-budget "$rhome")
+
+  # A remote leg that relays its own 124 reports the budget that bounded the
+  # transport; with FM_SEND_REMOTE_BUDGET unset that report must name the
+  # 90-second default. The real fm-send budget path runs, without waiting out
+  # a 90-second transport.
+  rc=0
+  send_env "$fb" "$home" "$ssh_log" FM_FAKE_SSH_RC=124 \
+    "$SEND" rsm "please rename the metric" >"$dir/default.out" 2>"$dir/default.err" || rc=$?
+  err=$(cat "$dir/default.err")
+  [ "$rc" -ne 0 ] || fail "a 124 remote leg must not claim confirmed delivery"
+  assert_contains "$err" "within its 90s budget" \
+    "an unset FM_SEND_REMOTE_BUDGET must resolve to the 90-second default"
+
+  rhome=$(setup_remote_secondmate_home remote-override-budget)
+  home=$(setup_remote_parent_home remote-override-budget "$rhome")
+  rc=0
+  send_env "$fb" "$home" "$ssh_log" FM_FAKE_SSH_RC=124 FM_SEND_REMOTE_BUDGET=7 \
+    "$SEND" rsm "please rename the metric" >"$dir/override.out" 2>"$dir/override.err" || rc=$?
+  [ "$rc" -ne 0 ] || fail "a 124 remote leg must not claim confirmed delivery"
+  assert_contains "$(cat "$dir/override.err")" "within its 7s budget" \
+    "an explicit FM_SEND_REMOTE_BUDGET must override the default"
+  pass "fm-send: default remote transport budget is 90 seconds and overridable"
+}
+
 test_remote_send_budget_bounds_busy_lane() {
   local dir fb ssh_log home rhome rc err began elapsed count pend delivery corr ssh_before
   dir="$TMP_ROOT/remote-budget"; mkdir -p "$dir"
@@ -797,6 +827,7 @@ test_remote_slash_rides_inbox
 test_remote_real_failure_still_fails
 test_remote_exit3_no_longer_delivered
 test_remote_transport_loss_preserves_expectation
+test_remote_send_default_budget_is_90_seconds
 test_remote_send_budget_bounds_busy_lane
 test_local_pending_reports_delivered_unconfirmed
 test_local_pending_does_not_close_resolve_key

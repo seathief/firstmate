@@ -35,8 +35,11 @@
 #
 # Modes:
 #   full - session-start sweep: remote routes run the full readiness repair
-#          sequence before probing, and an alive remote route is revalidated
-#          (route readable, backend herdr) so the sweep reports drift.
+#          sequence before probing (once per configured host+root per sweep),
+#          then one read-only state-route remote call that returns the state
+#          word and, when alive, the route block for backend revalidation.
+#          A remote code root predating state-route falls back to separate
+#          state and route calls so an un-updated remote is never misjudged.
 #   poll - watcher tick: remote routes take one read-only state probe per
 #          check; repair still happens, but inside fm-spawn's launch gate only
 #          when a relaunch is actually authorized.
@@ -88,6 +91,15 @@ fm_sm_live_first_line() {
   printf '%s\n' "$1" | sed -n '1s/[[:space:]]\{1,\}/ /g;1p'
 }
 
+FM_SM_LIVE_PARSED_STATE=
+FM_SM_LIVE_PARSED_ROUTE=
+
+fm_sm_live_parse_state_route() { # <combined-out>
+  local combined=$1
+  FM_SM_LIVE_PARSED_STATE=$(printf '%s\n' "$combined" | sed -n '1p')
+  FM_SM_LIVE_PARSED_ROUTE=$(printf '%s\n' "$combined" | awk '/^-- fm-remote-secondmate-route --$/ {r=1; next} r {print}')
+}
+
 # One line per relaunch attempt and one per outcome, keyed by epoch, plus a
 # `rearmed` row when a live probe lifts a parked mate. The watcher bound counts
 # `attempt` rows inside its window and after the last `rearmed` row; the whole
@@ -136,7 +148,7 @@ fm_secondmate_liveness_probe() {  # <meta> <id> <full|poll>
   local meta=$1 id=$2 mode=$3
   FM_SM_LIVE_STATUS=skipped FM_SM_LIVE_STATE=unknown FM_SM_LIVE_KILL=0
   FM_SM_LIVE_CAUSE='' FM_SM_LIVE_WHERE='' FM_SM_LIVE_REASON='' FM_SM_LIVE_LINE=''
-  local window harness remote_host remote_rc out agent_state readiness_reason route_out remote_backend
+  local window harness remote_host remote_rc out agent_state readiness_reason route_out remote_backend state_out route_reply
   window=$(fm_meta_get "$meta" window)
   [ -n "$window" ] || { FM_SM_LIVE_STATUS=silent; return 0; }
   harness=$(fm_meta_get "$meta" harness)
@@ -158,7 +170,32 @@ fm_secondmate_liveness_probe() {  # <meta> <id> <full|poll>
         return 0
       fi
     fi
-    if out=$("$FM_SM_LIVE_LIB_DIR/fm-on.sh" "$id" fm-remote-secondmate-control.sh state "$id" < /dev/null 2>/dev/null); then
+    if [ "$mode" = full ]; then
+      if out=$("$FM_SM_LIVE_LIB_DIR/fm-on.sh" "$id" fm-remote-secondmate-control.sh state-route "$id" < /dev/null 2>/dev/null); then
+        remote_rc=0
+      else
+        remote_rc=$?
+      fi
+      if [ "$remote_rc" -ne 0 ] && [ "$remote_rc" -ne 255 ]; then
+        # A remote code root predating state-route rejects it; probe the
+        # separate verbs so an un-updated remote is never misjudged unreadable.
+        out=
+        if state_out=$("$FM_SM_LIVE_LIB_DIR/fm-on.sh" "$id" fm-remote-secondmate-control.sh state "$id" < /dev/null 2>/dev/null); then
+          remote_rc=0
+          if [ "$(printf '%s\n' "$state_out" | tail -1)" = alive ]; then
+            out=$state_out
+            route_reply=$("$FM_SM_LIVE_LIB_DIR/fm-on.sh" "$id" fm-remote-secondmate-control.sh route "$id" < /dev/null 2>/dev/null) || remote_rc=$?
+            if [ "$remote_rc" -eq 0 ]; then
+              out=$(printf '%s\n%s\n%s\n' "$state_out" '-- fm-remote-secondmate-route --' "$route_reply")
+            fi
+          else
+            out=$state_out
+          fi
+        else
+          remote_rc=$?
+        fi
+      fi
+    elif out=$("$FM_SM_LIVE_LIB_DIR/fm-on.sh" "$id" fm-remote-secondmate-control.sh state "$id" < /dev/null 2>/dev/null); then
       remote_rc=0
     else
       remote_rc=$?
@@ -168,24 +205,31 @@ fm_secondmate_liveness_probe() {  # <meta> <id> <full|poll>
       return 0
     fi
     if [ "$remote_rc" -ne 0 ]; then
-      FM_SM_LIVE_REASON="remote endpoint probe unreadable on $remote_host"
+      if [ "$mode" = full ]; then
+        fm_sm_live_parse_state_route "$out"
+        if [ "$FM_SM_LIVE_PARSED_STATE" = alive ] && [ -z "$FM_SM_LIVE_PARSED_ROUTE" ]; then
+          FM_SM_LIVE_REASON="alive remote endpoint route is unreadable on $remote_host; inspect and migrate or retire it explicitly"
+        else
+          FM_SM_LIVE_REASON="remote endpoint probe unreadable on $remote_host"
+        fi
+      else
+        FM_SM_LIVE_REASON="remote endpoint probe unreadable on $remote_host"
+      fi
       return 0
     fi
-    agent_state=$(printf '%s\n' "$out" | tail -1)
+    route_out=
+    if [ "$mode" = full ]; then
+      fm_sm_live_parse_state_route "$out"
+      agent_state=$FM_SM_LIVE_PARSED_STATE
+      route_out=$FM_SM_LIVE_PARSED_ROUTE
+    else
+      agent_state=$(printf '%s\n' "$out" | tail -1)
+    fi
     FM_SM_LIVE_STATE=$agent_state
     case "$agent_state" in
       alive)
         if [ "$mode" = full ]; then
-          if route_out=$("$FM_SM_LIVE_LIB_DIR/fm-on.sh" "$id" fm-remote-secondmate-control.sh route "$id" < /dev/null 2>/dev/null); then
-            remote_rc=0
-          else
-            remote_rc=$?
-          fi
-          if [ "$remote_rc" -eq 255 ]; then
-            FM_SM_LIVE_REASON="remote host unavailable or endpoint route unknown; route preserved on $remote_host"
-            return 0
-          fi
-          if [ "$remote_rc" -ne 0 ]; then
+          if [ -z "$route_out" ]; then
             FM_SM_LIVE_REASON="alive remote endpoint route is unreadable on $remote_host; inspect and migrate or retire it explicitly"
             return 0
           fi

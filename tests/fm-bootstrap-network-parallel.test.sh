@@ -69,7 +69,7 @@ slow=0
 case "$command_name" in
   fm-remote-doctor.sh) slow=1 ;;
   fm-remote-secondmate-control.sh)
-    case "$subcommand" in state|sync) slow=1 ;; esac
+    case "$subcommand" in state|state-route|sync) slow=1 ;; esac
     ;;
 esac
 if [ "$slow" -eq 1 ]; then
@@ -100,6 +100,12 @@ case "$command_name" in
     case "$subcommand" in
       state)
         printf 'alive\n'
+        exit 0
+        ;;
+      state-route)
+        printf 'alive\n'
+        printf '%s\n' '-- fm-remote-secondmate-route --'
+        printf 'backend=herdr\n'
         exit 0
         ;;
       route)
@@ -296,9 +302,9 @@ EOF
       || fail "mktemp failure did not select sequential liveness fallback (starts before first doctor end=$doctor_overlap)"$'\n'"$(cat "$log")"
   fi
 
-  liveness_starts=$(grep -c '^START .* fm-remote-secondmate-control.sh state$' "$log" || true)
+  liveness_starts=$(grep -c '^START .* fm-remote-secondmate-control.sh state-route$' "$log" || true)
   [ "$liveness_starts" -ge 2 ] \
-    || fail "expected concurrent remote state probes, got $liveness_starts"$'\n'"$(cat "$log")"
+    || fail "expected concurrent remote state-route probes, got $liveness_starts"$'\n'"$(cat "$log")"
 
   fetch_starts=$(grep -c '^START fleet-fetch ' "$log" || true)
   [ "$fetch_starts" -ge 1 ] \
@@ -312,7 +318,7 @@ EOF
   ' "$log" || fail "clone refresh did not overlap the secondmate sweeps"$'\n'"$(cat "$log")"
 
   awk '
-    /END .* fm-remote-secondmate-control.sh state$/ { last_liveness = NR }
+    /END .* fm-remote-secondmate-control.sh state-route$/ { last_liveness = NR }
     /START .* fm-remote-secondmate-control.sh sync$/ && !first_sync { first_sync = NR }
     END { exit !(last_liveness && first_sync && last_liveness < first_sync) }
   ' "$log" || fail "convergence began before all liveness probes finished"$'\n'"$(cat "$log")"
