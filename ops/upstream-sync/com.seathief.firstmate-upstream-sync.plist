@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  LaunchAgent template for ops/upstream-sync/sync.sh.
+  Replace every placeholder before installing, and adjust PATH if git lives
+  elsewhere:
+    __REPO__       absolute path to the fork checkout
+    __FM_HOME__    absolute path to the fleet home that receives failure notes
+    __USER_HOME__  absolute path to the account home directory
+  The README owns the install commands; the captain installs this, never a worker.
+-->
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.seathief.firstmate-upstream-sync</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/bash</string>
+    <string>__REPO__/ops/upstream-sync/sync.sh</string>
+  </array>
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>FM_HOME</key>
+    <string>__FM_HOME__</string>
+    <key>PATH</key>
+    <string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+  </dict>
+  <key>StartCalendarInterval</key>
+  <dict>
+    <key>Hour</key>
+    <integer>5</integer>
+    <key>Minute</key>
+    <integer>0</integer>
+  </dict>
+  <key>RunAtLoad</key>
+  <false/>
+  <key>ProcessType</key>
+  <string>Background</string>
+  <key>StandardOutPath</key>
+  <string>__FM_HOME__/state/upstream-sync/launchd.out.log</string>
+  <key>StandardErrorPath</key>
+  <string>__FM_HOME__/state/upstream-sync/launchd.err.log</string>
+</dict>
+</plist>
