@@ -1,0 +1,110 @@
+=== parallel bootstrap network output ===
+SECONDMATE_LIVENESS: secondmate bravo: skipped: remote host unavailable or endpoint state unknown; route preserved on host-bravo
+SECONDMATE_SYNC: secondmate alpha: skipped: remote tracked-file sync failed on host-alpha: synthetic tracked-file sync refusal for host-alpha
+SECONDMATE_SYNC: secondmate bravo: skipped: remote tracked-file sync failed on host-bravo: 
+SECONDMATE_SYNC: secondmate bravo: skipped: remote inheritance failed on host-bravo: 
+SECONDMATE_SYNC: secondmate charlie: skipped: remote tracked-file sync failed on host-charlie: remote secondmate checkout is dirty; sync skipped
+=== parallel remote operation timeline ===
+START host-alpha fm-remote-doctor.sh 
+START host-charlie fm-remote-doctor.sh 
+START host-bravo fm-remote-doctor.sh 
+START fleet-fetch git fetch
+END fleet-fetch git fetch
+END host-charlie fm-remote-doctor.sh 
+END host-alpha fm-remote-doctor.sh 
+END host-bravo fm-remote-doctor.sh 
+START host-alpha fm-remote-secondmate-control.sh state-route
+START host-charlie fm-remote-secondmate-control.sh state-route
+END host-charlie fm-remote-secondmate-control.sh state-route
+END host-alpha fm-remote-secondmate-control.sh state-route
+START host-alpha fm-remote-secondmate-control.sh sync
+START host-bravo fm-remote-secondmate-control.sh sync
+START host-charlie fm-remote-secondmate-control.sh sync
+END host-alpha fm-remote-secondmate-control.sh sync
+END host-bravo fm-remote-secondmate-control.sh sync
+END host-charlie fm-remote-secondmate-control.sh sync
+QUICK host-alpha fm-remote-inherit.sh absent
+QUICK host-charlie fm-remote-inherit.sh absent
+QUICK host-bravo fm-remote-inherit.sh absent
+QUICK host-alpha fm-remote-inherit.sh absent
+QUICK host-charlie fm-remote-inherit.sh absent
+QUICK host-charlie fm-remote-inherit.sh absent
+QUICK host-alpha fm-remote-inherit.sh absent
+QUICK host-alpha fm-remote-inherit.sh absent
+QUICK host-charlie fm-remote-inherit.sh absent
+QUICK host-alpha fm-remote-inherit.sh absent
+QUICK host-charlie fm-remote-inherit.sh absent
+QUICK host-alpha fm-remote-inherit.sh absent
+QUICK host-charlie fm-remote-inherit.sh absent
+QUICK host-alpha fm-remote-inherit.sh absent
+QUICK host-charlie fm-remote-inherit.sh absent
+QUICK host-charlie fm-remote-inherit.sh absent
+QUICK host-alpha fm-remote-inherit.sh absent
+QUICK host-charlie fm-remote-inherit.sh absent
+QUICK host-alpha fm-remote-inherit.sh absent
+QUICK host-alpha fm-remote-inherit.sh absent
+QUICK host-charlie fm-remote-inherit.sh absent
+QUICK host-charlie fm-remote-inherit.sh absent
+QUICK host-alpha fm-remote-inherit.sh absent
+QUICK host-alpha fm-remote-inherit.sh absent
+QUICK host-charlie fm-remote-inherit.sh absent
+QUICK host-alpha fm-remote-inherit.sh absent
+QUICK host-charlie fm-remote-inherit.sh absent
+QUICK host-charlie fm-remote-inherit.sh absent
+QUICK host-alpha fm-remote-inherit.sh absent
+=== fallback bootstrap network output ===
+SECONDMATE_LIVENESS: secondmate bravo: skipped: remote host unavailable or endpoint state unknown; route preserved on host-bravo
+SECONDMATE_SYNC: secondmate alpha: skipped: remote tracked-file sync failed on host-alpha: synthetic tracked-file sync refusal for host-alpha
+SECONDMATE_SYNC: secondmate bravo: skipped: remote tracked-file sync failed on host-bravo: 
+SECONDMATE_SYNC: secondmate bravo: skipped: remote inheritance failed on host-bravo: 
+SECONDMATE_SYNC: secondmate charlie: skipped: remote tracked-file sync failed on host-charlie: remote secondmate checkout is dirty; sync skipped
+=== fallback remote operation timeline ===
+START host-alpha fm-remote-doctor.sh 
+START fleet-fetch git fetch
+END fleet-fetch git fetch
+END host-alpha fm-remote-doctor.sh 
+START host-alpha fm-remote-secondmate-control.sh state-route
+END host-alpha fm-remote-secondmate-control.sh state-route
+START host-bravo fm-remote-doctor.sh 
+END host-bravo fm-remote-doctor.sh 
+START host-charlie fm-remote-doctor.sh 
+END host-charlie fm-remote-doctor.sh 
+START host-charlie fm-remote-secondmate-control.sh state-route
+END host-charlie fm-remote-secondmate-control.sh state-route
+START host-alpha fm-remote-secondmate-control.sh sync
+END host-alpha fm-remote-secondmate-control.sh sync
+QUICK host-alpha fm-remote-inherit.sh absent
+QUICK host-alpha fm-remote-inherit.sh absent
+QUICK host-alpha fm-remote-inherit.sh absent
+QUICK host-alpha fm-remote-inherit.sh absent
+QUICK host-alpha fm-remote-inherit.sh absent
+QUICK host-alpha fm-remote-inherit.sh absent
+QUICK host-alpha fm-remote-inherit.sh absent
+QUICK host-alpha fm-remote-inherit.sh absent
+QUICK host-alpha fm-remote-inherit.sh absent
+QUICK host-alpha fm-remote-inherit.sh absent
+QUICK host-alpha fm-remote-inherit.sh absent
+QUICK host-alpha fm-remote-inherit.sh absent
+QUICK host-alpha fm-remote-inherit.sh absent
+QUICK host-alpha fm-remote-inherit.sh absent
+START host-bravo fm-remote-secondmate-control.sh sync
+END host-bravo fm-remote-secondmate-control.sh sync
+QUICK host-bravo fm-remote-inherit.sh absent
+START host-charlie fm-remote-secondmate-control.sh sync
+END host-charlie fm-remote-secondmate-control.sh sync
+QUICK host-charlie fm-remote-inherit.sh absent
+QUICK host-charlie fm-remote-inherit.sh absent
+QUICK host-charlie fm-remote-inherit.sh absent
+QUICK host-charlie fm-remote-inherit.sh absent
+QUICK host-charlie fm-remote-inherit.sh absent
+QUICK host-charlie fm-remote-inherit.sh absent
+QUICK host-charlie fm-remote-inherit.sh absent
+QUICK host-charlie fm-remote-inherit.sh absent
+QUICK host-charlie fm-remote-inherit.sh absent
+QUICK host-charlie fm-remote-inherit.sh absent
+QUICK host-charlie fm-remote-inherit.sh absent
+QUICK host-charlie fm-remote-inherit.sh absent
+QUICK host-charlie fm-remote-inherit.sh absent
+QUICK host-charlie fm-remote-inherit.sh absent
+=== inherit-failure bootstrap output ===
+SECONDMATE_SYNC: secondmate sm: skipped: remote inheritance failed on host-sm: error: shared captain preferences have no valid primary-authoritative header: missing "must not be edited there"

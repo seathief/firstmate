@@ -1,0 +1,6 @@
+ok - sweep cache: readiness runs once for two mates on one host
+ok - sweep cache: a failed host readiness blocks every mate on that host
+ok - sweep cache: key falls back to sha256sum when shasum is absent
+ok - sweep cache: key fails closed when no digest tool is available
+# all fm-remote-readiness-sweep tests passed
+EXIT=0

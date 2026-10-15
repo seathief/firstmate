@@ -1,0 +1,5 @@
+ok - state-route parser: splits combined output like separate state and route
+ok - full probe: one remote control call replaces separate state and route
+ok - full probe: an old remote root falls back to separate state and route
+# all fm-remote-secondmate-state-route tests passed
+EXIT=0

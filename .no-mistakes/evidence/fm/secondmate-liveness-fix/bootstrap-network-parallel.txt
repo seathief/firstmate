@@ -1,0 +1,4 @@
+ok - bootstrap network (parallel): per-mate output stays intact, fail-closed, and correctly sequenced
+ok - bootstrap network (fallback): per-mate output stays intact, fail-closed, and correctly sequenced
+ok - a remote inheritance failure reports its own error line, not an earlier unchanged item
+# all fm-bootstrap-network-parallel tests passed
