@@ -13,6 +13,7 @@
 #   4. modify/delete conflict -> same refusal path
 #   5. failing tests        -> pushes nothing, leaves a firstmate note
 #   6. origin resolves to upstream -> refuses before doing any work
+#   7. origin's push URL is an equivalent spelling of upstream -> refuses
 # Cases 1-5 also prove the throwaway worktree is gone afterwards.
 #
 # Run: bash ops/upstream-sync/sync.test.sh
