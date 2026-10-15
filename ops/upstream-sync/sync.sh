@@ -90,26 +90,29 @@ trap 'rc=$?; cleanup; exit $rc' EXIT
 
 # Reduce supported SSH and HTTPS remote spellings to host/path, ignoring credentials.
 normalize_url() {
-  python3 -c 'import os, sys, urllib.parse
+  python3 -c 'import os, posixpath, sys, urllib.parse
 u = sys.argv[1]
 if u.startswith("file://"):
     path = urllib.parse.urlsplit(u).path
-    key = "local/" + os.path.abspath(path)
+    key = "local/" + os.path.realpath(path)
 elif "://" not in u:
     user, sep, rest = u.partition("@")
     if not sep:
-        key = "local/" + os.path.abspath(u)
+        key = "local/" + os.path.realpath(u)
     else:
         host, sep, path = rest.partition(":")
         if not sep: raise SystemExit("unsupported remote URL")
-        key = host.lower() + "/" + path
+        host = host.lower().removeprefix("www.")
+        key = host + "/" + path
 else:
     parsed = urllib.parse.urlsplit(u)
     if not parsed.hostname: raise SystemExit("unsupported remote URL")
-    key = parsed.hostname.lower() + "/" + parsed.path.lstrip("/")
-key = key.rstrip("/")
-if key.endswith(".git"): key = key[:-4]
-print(key.lower())' "$1"
+    host = parsed.hostname.lower().removeprefix("www.")
+    key = host + "/" + parsed.path.lstrip("/")
+prefix, sep, path = key.partition("/")
+path = posixpath.normpath("/" + path).lstrip("/")
+if path.endswith(".git"): path = path[:-4]
+print((prefix + "/" + path).lower().rstrip("/"))' "$1"
 }
 
 # Refuses to run when the remote a push would reach is upstream, before any

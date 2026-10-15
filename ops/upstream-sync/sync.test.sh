@@ -211,6 +211,21 @@ check_contains "same remote: names the refusal" "would reach" "$out"
 check "same remote: origin unchanged" "$before" "$(origin_head)"
 check_absent "same remote: no test run" "$W/tests.log"
 
+### 7. GitHub-equivalent push URLs are also refused
+make_world equivalenturls
+git -C "$W/primary" remote set-url upstream https://github.com/kunchenguid/firstmate.git
+for url in \
+  'https://github.com/kunchenguid//firstmate.git/' \
+  'https://github.com/kunchenguid/./firstmate.git' \
+  'https://www.github.com/kunchenguid/firstmate.git' \
+  'git@github.com:kunchenguid/FirstMate.git'; do
+  git -C "$W/primary" remote set-url --push origin "$url"
+  out="$(run_sync)"
+  rc=$?
+  if [ "$rc" != 0 ]; then pass "equivalent URL refused: $url"; else fail "equivalent URL allowed: $url"; fi
+  check_contains "equivalent URL refusal is explicit" "would reach upstream" "$out"
+done
+
 if [ "$failures" -eq 0 ]; then
   printf 'sync.test.sh: all cases passed\n'
   exit 0
