@@ -57,6 +57,7 @@ UPSTREAM=upstream
 LIMIT_FETCH=600
 LIMIT_MERGE=300
 LIMIT_TEST=3600
+LIMIT_PUSH=600
 LOG_DIR="${FM_HOME:-$HOME}/state/upstream-sync"
 STATE_DIR="${TMPDIR:-/tmp}/fm-upstream-sync"
 WORKTREE=""
@@ -80,10 +81,20 @@ cleanup() {
 }
 trap 'rc=$?; cleanup; exit $rc' EXIT
 
-# Reads a remote URL of the form git@host:owner/repo or https://host/owner/repo
-# into one comparable spelling, so the same remote cannot hide behind two URLs.
+# Reduce supported SSH and HTTPS remote spellings to host/path, ignoring credentials.
 normalize_url() {
-  printf '%s' "$1" | sed -e 's|\.git$||' -e 's|/$||' -e 's|^[^/@]*@\([^/:]*\):|https://\1/|'
+  python3 -c 'import sys, urllib.parse
+u = sys.argv[1]
+if "://" not in u:
+    user, sep, rest = u.partition("@")
+    if not sep:
+        print("local/" + u.removesuffix(".git").rstrip("/")); raise SystemExit
+    host, sep, path = rest.partition(":")
+    if not sep: raise SystemExit("unsupported remote URL")
+else:
+    parsed = urllib.parse.urlsplit(u)
+    host, path = parsed.hostname or "", parsed.path.lstrip("/")
+print((host.lower() + "/" + path.removesuffix(".git")).rstrip("/"))' "$1"
 }
 
 # Refuses to run when the remote a push would reach is upstream, before any
@@ -97,7 +108,7 @@ require_origin_is_not_upstream() {
   upstream_fetch="$(normalize_url "$upstream_fetch")"
   upstream_push="$(normalize_url "$upstream_push")"
   [ "$origin_push" != "$upstream_fetch" ] && [ "$origin_push" != "$upstream_push" ] \
-    || die "refusing to run: a push to $ORIGIN would reach $UPSTREAM ($origin_push)"
+    || die "refusing to run: a push to $ORIGIN would reach $UPSTREAM"
 }
 
 acquire_lock() {
@@ -124,16 +135,18 @@ acquire_lock() {
   return 0
 }
 
-# run_limited <seconds, 0 = no limit> <dir> <command> [args...]
-# Runs the command with its working directory set, appending output to the run
-# log. short: a timeout kills the launched process, not its descendants.
+# run_limited <seconds> <dir> <command> [args...]
+# Runs the command in its own process group and appends output to the run log.
 run_limited() {
   local secs=$1 dir=$2 pid="" killer="" rc=0
   shift 2
-  ( cd "$dir" && exec "$@" ) >>"$LOG" 2>&1 &
+  python3 -c 'import os, sys
+os.setsid()
+os.chdir(sys.argv[1])
+os.execvp(sys.argv[2], sys.argv[2:])' "$dir" "$@" >>"$LOG" 2>&1 &
   pid=$!
   if [ "$secs" -gt 0 ] 2>/dev/null; then
-    ( sleep "$secs"; kill -TERM "$pid" 2>/dev/null; sleep 5; kill -KILL "$pid" 2>/dev/null ) >>"$LOG" 2>&1 &
+    ( sleep "$secs"; kill -TERM -- "-$pid" 2>/dev/null; sleep 5; kill -KILL -- "-$pid" 2>/dev/null ) >>"$LOG" 2>&1 &
     killer=$!
   fi
   wait "$pid"
@@ -224,7 +237,7 @@ $(printf '%s\n' "$conflicted" | sed 's/^/  - /')"
   require_origin_is_not_upstream
   git -C "$WORKTREE" merge-base --is-ancestor "$upstream_ref" HEAD \
     || fail_task "the merge does not contain $UPSTREAM/$BRANCH; refusing to push"
-  if ! run_limited 0 "$WORKTREE" git push "$ORIGIN" "HEAD:refs/heads/$BRANCH"; then
+  if ! run_limited "$LIMIT_PUSH" "$WORKTREE" git push "$ORIGIN" "HEAD:refs/heads/$BRANCH"; then
     fail_task "the push to $ORIGIN/$BRANCH was refused (never forced, nothing overwritten)"
   fi
   log "pushed $UPSTREAM/$BRANCH into $ORIGIN/$BRANCH"
