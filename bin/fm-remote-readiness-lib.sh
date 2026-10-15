@@ -46,8 +46,6 @@ fm_remote_readiness_sweep_key() { # <secondmate-id>
     digest=$(printf '%s|%s\n' "$SECONDMATE_REGISTRY_HOST" "$SECONDMATE_REGISTRY_ROOT" | shasum -a 256 | awk '{print $1}') || return 1
   elif command -v sha256sum >/dev/null 2>&1; then
     digest=$(printf '%s|%s\n' "$SECONDMATE_REGISTRY_HOST" "$SECONDMATE_REGISTRY_ROOT" | sha256sum | awk '{print $1}') || return 1
-  elif command -v openssl >/dev/null 2>&1; then
-    digest=$(printf '%s|%s\n' "$SECONDMATE_REGISTRY_HOST" "$SECONDMATE_REGISTRY_ROOT" | openssl dgst -sha256 2>/dev/null | awk '{print $NF}') || return 1
   else
     return 1
   fi
