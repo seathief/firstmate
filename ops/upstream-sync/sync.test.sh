@@ -8,12 +8,11 @@
 #
 # Cases:
 #   1. already up to date   -> exits 0, runs no test, pushes nothing, no note
-#   2. clean merge          -> merges, runs the test entry point, pushes
+#   2. clean merge          -> merges and pushes without running tests
 #   3. content conflict     -> aborts, pushes nothing, leaves a firstmate note
 #   4. modify/delete conflict -> same refusal path
-#   5. failing tests        -> pushes nothing, leaves a firstmate note
-#   6. origin resolves to upstream -> refuses before doing any work
-#   7. origin's push URL is an equivalent spelling of upstream -> refuses
+#   5. origin resolves to upstream -> refuses before doing any work
+#   6. origin's push URL is an equivalent spelling of upstream -> refuses
 # Cases 1-5 also prove the throwaway worktree is gone afterwards.
 #
 # Run: bash ops/upstream-sync/sync.test.sh
@@ -156,7 +155,7 @@ if git -C "$W/origin.git" merge-base --is-ancestor "$(git -C "$W/upstream.git" r
 else
   fail "clean merge: upstream is not contained after the push"
 fi
-check_contains "clean merge: ran the repo test entry point" "--changed" "$(cat "$W/tests.log" 2>/dev/null)"
+check_absent "clean merge: no test run" "$W/tests.log"
 check_contains "clean merge: upstream content landed" "upstream change" "$(git -C "$W/origin.git" show main:docs/other.md)"
 check "clean merge: fork content kept" "fork-only change" "$(git -C "$W/origin.git" show main:docs/fork-only.md)"
 check_absent "clean merge: no note" "$W/inbox.log"
@@ -196,19 +195,7 @@ check_contains "modify/delete: note left for firstmate" "did not finish cleanly"
 check_absent "modify/delete: no test run" "$W/tests.log"
 check_worktree_cleanup "modify/delete"
 
-### 5. failing tests: abort the push and leave a note
-make_world testsfail
-fork_commit docs/fork-only.md "fork-only change" "fork: own commit"
-upstream_commit docs/other.md "upstream change" "upstream: touch other"
-before="$(origin_head)"
-out="$(FM_FAKE_TEST_EXIT=1 run_sync)"
-rc=$?
-if [ "$rc" != 0 ]; then pass "failing tests: non-zero exit"; else fail "failing tests: exited 0"; fi
-check "failing tests: origin unchanged" "$before" "$(origin_head)"
-check_contains "failing tests: note names the failure" "tests failed" "$(cat "$W/inbox.log" 2>/dev/null)"
-check_worktree_cleanup "failing tests"
-
-### 6. a push that would reach upstream refuses to run
+### 5. a push that would reach upstream refuses to run
 make_world sameremote
 git -C "$W/primary" remote set-url upstream "$W/origin.git"
 before="$(origin_head)"
@@ -219,7 +206,7 @@ check_contains "same remote: names the refusal" "would reach" "$out"
 check "same remote: origin unchanged" "$before" "$(origin_head)"
 check_absent "same remote: no test run" "$W/tests.log"
 
-### 7. GitHub-equivalent push URLs are also refused
+### 6. GitHub-equivalent push URLs are also refused
 make_world equivalenturls
 git -C "$W/primary" remote set-url upstream https://github.com/kunchenguid/firstmate.git
 for url in \
