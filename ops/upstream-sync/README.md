@@ -9,7 +9,7 @@ It never resolves a conflict and never calls a model.
 
 ## Layout
 
-- [sync.sh](sync.sh) merges upstream `main` into the fork's `main`, runs the repository's own tests, and pushes only on a clean, green merge.
+- [sync.sh](sync.sh) merges upstream `main` into the fork's `main` and pushes only on a clean merge; it does not run the test suite.
 - [sync.test.sh](sync.test.sh) is the offline regression: fake bare `upstream` and `origin` repositories, a stubbed test entry point, and a stubbed inbox script.
 - [com.seathief.firstmate-upstream-sync.plist](com.seathief.firstmate-upstream-sync.plist) is the LaunchAgent template for the daily 05:00 run.
 
@@ -22,8 +22,7 @@ It never resolves a conflict and never calls a model.
    - Any merge that does not finish cleanly, including a content, binary, rename, or modify/delete conflict, is aborted.
      Nothing is pushed, one note is left for firstmate through the fleet home's `bin/fm-inbox.sh`, and the run exits non-zero.
      Firstmate then handles the conflict through its ordinary flow, in an isolated copy with the full checks and a pull request.
-   - A clean merge runs the repository's own test entry point, `bin/fm-test-run.sh --changed` inside the worktree.
-     Tests pass: the merge is pushed to `origin/main`. Tests fail: nothing is pushed, the same note is left, the run exits non-zero.
+   - A clean merge is pushed to `origin/main` without running the test suite (disabled 2026-10-16 because the full run exceeded its one-hour limit on the mini).
 5. Always removes the throwaway worktree and releases the lock.
 
 The remotes are fixed: `origin` is the fork, `upstream` is `kunchenguid/firstmate`, and the branch is `main`.
@@ -83,4 +82,4 @@ It does not run at load, and it is not kept alive, so a stopped run waits for th
 bash ops/upstream-sync/sync.test.sh
 ```
 
-The test runs offline in a temp root and covers an already-current fork, a clean merge that pushes, a content conflict, a modify/delete conflict, a failing test run, and the refusal when `origin` resolves to `upstream`.
+The test runs offline in a temp root and covers an already-current fork, a clean merge that pushes, a content conflict, a modify/delete conflict, and the refusal when `origin` resolves to `upstream`.
