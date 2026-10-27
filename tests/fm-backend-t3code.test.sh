@@ -641,6 +641,43 @@ if (count("event-one") !== 1 || count("event-two") !== 1 || count("event-three")
   pass "away daemon on T3: an unconfirmed digest is frozen and retried verbatim; a later event goes in the next digest, each event once"
 }
 
+# A daemon that dies after T3 accepted a digest but before it cleared the
+# buffer must, on restart, resend that digest under the same request id so T3
+# deduplicates it, never mint a new id that delivers the same events twice.
+test_daemon_restart_after_accepted_digest_reuses_request_id() {
+  local state got
+  t3_case daemon-digest-restart completed
+  state="$CASE_DIR/state"
+  mkdir -p "$state"
+  got=$(t3_run '
+    . "$0/bin/fm-supervise-daemon.sh"
+    FM_SUPERVISOR_TARGET=thread-live FM_SUPERVISOR_BACKEND=t3code FM_DAEMON_PRIMARY_HARNESS=codex
+    afk_enter "$1"
+    escalate_add "$1" "event-one"
+    ( unknown_wake_acknowledge_flushed() { exit 9; }; escalate_flush "$1" ); printf "killed=%s\n" "$?"
+    node -e "
+const fs = require(\"fs\"), f = process.argv[1], w = JSON.parse(fs.readFileSync(f, \"utf8\"));
+const t = w.threads[\"thread-live\"]; t.status = \"completed\"; t.activeRunId = null;
+fs.writeFileSync(f, JSON.stringify(w));
+" "$2"
+    escalate_flush "$1"; printf "restart=%s\n" "$?"
+  ' "$state" "$T3_FAKE_WORLD" 2>&1)
+  assert_contains "$got" "killed=9" "the first flush must die after T3 accepted the digest: $got"
+  assert_contains "$got" "restart=0" "the restarted flush must settle the digest: $got"
+  [ ! -s "$state/.subsuper-escalations" ] || fail "the delivered event must leave the buffer, still holds '$(cat "$state/.subsuper-escalations")'"
+  [ ! -e "$state/.subsuper-escalations.frozen" ] || fail "a settled digest must not stay frozen"
+  [ "$(t3_fake_calls t3_thread_send | node -e '
+const ids = require("fs").readFileSync(0, "utf8").trim().split("\n").map((l) => JSON.parse(l).clientRequestId);
+process.stdout.write(ids.length === 2 && ids[0] && ids[0] === ids[1] ? "ok" : ids.join(","));
+')" = ok ] || fail "the restart must resend under the original request id, got '$(t3_fake_calls t3_thread_send)'"
+  node -e '
+const w = JSON.parse(require("fs").readFileSync(process.argv[1], "utf8"));
+const texts = w.threads["thread-live"].items.filter((i) => i.type === "user_message").map((i) => i.text);
+if (texts.filter((t) => t.includes("event-one")).length !== 1) { console.error(JSON.stringify(texts)); process.exit(1); }
+' "$T3_FAKE_WORLD" || fail "the event must reach the supervisor thread exactly once across the restart"
+  pass "away daemon on T3: a restart after an accepted digest reuses its request id and delivers each event once"
+}
+
 # Items buffered behind a frozen digest keep their own undelivered age once
 # the frozen digest is delivered after a long outage: the age of the first of
 # them, not the outage's age, and not a fresh window that would hide how long
@@ -2754,6 +2791,7 @@ test_answer_script_reads_and_answers_questions
 test_failed_t3_secondmate_is_resumed_in_place
 test_t3_secondmate_missing_thread_reproves_close_before_replacement
 test_daemon_unconfirmed_digest_is_frozen_and_retried_verbatim
+test_daemon_restart_after_accepted_digest_reuses_request_id
 test_frozen_flush_keeps_the_next_generation_arrival
 test_daemon_defers_digest_while_supervisor_waits_on_request
 test_helper_through_symlinked_root_reaches_t3_and_kill_fails_closed

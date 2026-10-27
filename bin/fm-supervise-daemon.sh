@@ -901,9 +901,9 @@ escalate_full_text_save() {  # <state> <buf>
   printf '%s' "$file"
 }
 
-# A digest whose delivery came back unconfirmed (only T3 Code reports it: the
-# message may have landed) may already be in the supervisor's transcript. Its
-# generation is frozen: <buf>.frozen-msg keeps the exact submitted text and
+# A T3 Code digest may already be in the supervisor's transcript once it is
+# submitted, even when the reply is lost or the daemon dies before clearing the
+# buffer, so escalate_flush freezes its generation before the first submit: <buf>.frozen-msg keeps the exact submitted text and
 # <buf>.frozen records the buffer's since-stamp, the client request id the
 # daemon minted for that digest, and the items it covered. Every retry sends
 # the same text under that id, with no expiry, until T3 accepts it or refuses
@@ -960,7 +960,7 @@ escalate_flush_frozen() {  # <state> <buf>
 # (escalate_freeze) is retried first, verbatim.
 ESCALATE_KEPT_FULL=
 escalate_flush() {  # <state>
-  local state=$1 buf msg full='' fresh=0 id=''
+  local state=$1 buf msg full='' fresh=0 id='' encoded=''
   buf="$state/.subsuper-escalations"
   [ -s "$buf" ] || return 0
   if [ ! -f "$buf" ] || [ ! -r "$buf" ]; then
@@ -989,7 +989,29 @@ escalate_flush() {  # <state>
   # Single-line wrapper: no embedded newlines (inject_msg also collapses as a
   # safety net, but keeping the source single-line makes the intent explicit).
   msg=$(printf 'Supervisor escalate (%s event(s)): %s (pre-read; re-arm not needed — watcher daemon-managed)' "$ESCALATE_EVENTS" "$msg")
-  [ "${FM_SUPERVISOR_BACKEND:-tmux}" != t3code ] || id="fm-digest-$(_now)-$$-$RANDOM$RANDOM"
+  if [ "${FM_SUPERVISOR_BACKEND:-tmux}" = t3code ]; then
+    # Freeze before the first submit: a daemon killed after T3 accepted the
+    # digest but before the buffer was cleared must retry the same text under
+    # the same request id on restart, never mint a new id that bypasses T3's
+    # deduplication.
+    id="fm-digest-$(_now)-$$-$RANDOM$RANDOM"
+    if ! fm_operational_input_encode away-supervisor "$(_collapse_newlines "$msg")" encoded \
+      || ! escalate_freeze "$buf" "$encoded" "$id" || [ ! -f "$buf.frozen" ]; then
+      INJECT_LAST_FAILURE="digest could not be frozen before its first submit"
+      log "inject skipped: $INJECT_LAST_FAILURE; buffer preserved"
+      [ "$fresh" = 0 ] || rm -f "$full"
+      return 1
+    fi
+    if escalate_flush_frozen "$state" "$buf"; then
+      return 0
+    fi
+    if [ -f "$buf.frozen" ]; then
+      [ -z "$full" ] || ESCALATE_KEPT_FULL=$full
+    elif [ "$fresh" = 1 ] && [ "$INJECT_SUBMIT_ATTEMPTED" != 1 ]; then
+      rm -f "$full"
+    fi
+    return 1
+  fi
   if inject_msg "$msg" "$state" "" "$id"; then
     unknown_wake_acknowledge_flushed "$state" "$buf" \
       || log "unknown-wake acknowledgement write failed; a delivered unknown wake may escalate again"
